@@ -26,6 +26,31 @@ classdef UtilityFunctions
             end
         end
 
+        function X_ECI = ICRF2ECI(obj, X)
+            X_ECI = [1, 0, 0;...
+          0, cosd(23.44), -sind(23.44);...
+          0, sind(23.44),  cosd(23.44)] * X;
+        end
+
+        function X_ICRF = ECI2ICRF(obj, X)
+          X_ICRF = [1, 0, 0;...
+          0, cosd(-23.44), -sind(-23.44);...
+          0, sind(-23.44),  cosd(-23.44)] * X;
+        end
+
+
+        function v_hat = hat(obj, v)
+            v_hat = v / norm(v);
+        end
+
+        function angle = angle_between(obj, v1, v2)
+            angle = acosd(dot(v1, v2) / (norm(v1) * norm(v2)));
+        end
+
+        function v_rot = rodrigues_rot(obj, v, k, angle)
+            v_rot = v * cosd(angle) + cross(k,v) * sind(angle) + k * dot(k, v) * (1 - cosd(angle));
+        end
+
         
         function [X_next, V_next] = RK4(obj, dydx, dt, X_SC, V_SC, i)
         % RK4 numerical solver

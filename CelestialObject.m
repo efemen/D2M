@@ -8,16 +8,19 @@ classdef CelestialObject
         r
         r_soi
         r_orbit
+        tilt
         w_orbit
         T_orbit
         mu
         mu_sun
         t_anomaly
+        heliocentric_pos
+        heliocentric_vel
     end
     
     methods
         
-        function obj = CelestialObject(name, mass, r, r_orbit, jdt)
+        function obj = CelestialObject(name, mass, r, r_orbit, tilt, jdt)
             % Constants
             m_sun = 1.989e30;  % kg
             G = 6.6743015e-20; %  km^3 k^-1 s^-2
@@ -33,7 +36,7 @@ classdef CelestialObject
             obj.w_orbit = sqrt(mu_sun/r_orbit) / r_orbit;
             obj.name = name;
             obj.mu_sun = mu_sun;
-            
+            obj.tilt = tilt;
             
             % True anomaly calculation
             pos = planetEphemeris(jdt, "SolarSystem", obj.name);
@@ -43,9 +46,27 @@ classdef CelestialObject
                 obj.t_anomaly = obj.t_anomaly + 360;
             end
 
+            % Heliocentric position calculation
+            obj.heliocentric_pos = [obj.r_orbit * cosd(obj.t_anomaly), ...
+                                    obj.r_orbit * sind(obj.t_anomaly), 0];
+
+            % Heliocentric velocity calculation
+            obj.heliocentric_vel = sqrt(mu_sun / obj.r_orbit) * ...
+                                    [-sind(obj.t_anomaly), ...
+                                    cosd(obj.t_anomaly), 0];
+
         end
 
+        function obj = refresh(obj, t)
+            obj.t_anomaly = obj.t_anomaly + rad2deg(obj.w_orbit * t);
 
+            if obj.t_anomaly > 360
+                obj.t_anomaly = obj.t_anomaly - 360;
+            end
+
+            obj.heliocentric_pos = [obj.r_orbit * cosd(obj.t_anomaly), ...
+                                    obj.r_orbit * sind(obj.t_anomaly), 0];
+        end
 
     end
 end
