@@ -1,9 +1,10 @@
+clear; clc; close all;
 % Launch will take place from Taiwan. December 2043.
 
 lat = 23.44;
 lon = 121.5;
 
-% % jdt = juliandate([2043, 12, 8, 16, 44, 38]);
+% jdt = juliandate([2043, 12, 8, 16, 44, 38]);
 
 jdt = juliandate([2043, 12, 8, 15, 59, 0]);
 
@@ -39,6 +40,7 @@ n_earth_velocity = uf.rodrigues_rot(n_sun, n_ecliptic, 90);
 % Plots
 
 figure(1);
+set(gcf, 'Position',  [1200, 0, 800, 800])
 earth_map = surf(X_E,Y_E,-Z_E);
 earthMap = imread("world_Map.jpg");
 set(earth_map,'CData', earthMap,'FaceColor','texturemap',"EdgeColor","none")
@@ -71,6 +73,8 @@ text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉")
 quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
 text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨")
 
+figure(2)
+set(gcf, 'Position',  [100, 0, 800, 800])
 
 clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 
@@ -99,15 +103,12 @@ fp_angle_wind = m; % deg
 aoa = m;           % deg
 energy = m;        % Specific orbital energy, km^2 / s^2
 
-
-alt(1) = 0; % km
-
 X_R = zeros(N, 3);
 V_R = X_R;
 A_R = V_R;
 
-X_R(1,:) = R_i;
-V_R(1,:) = V_i;
+X_R(1, :) = R_i;
+V_R(1, :) = V_i;
 
 % Rocket Parameters -- RD-180, ATLAS 401
 
@@ -142,8 +143,7 @@ r_parking_orbit = earth.r + 500; % km
 v_parking_orbit = sqrt(earth.mu / r_parking_orbit);
 e_parking_orbit = -0.5 * earth.mu / r_parking_orbit;
 
-a = @(X, V, m)  T_mag * uf.hat(X) / m / 1e3 - earth.mu * X / norm(X)^3; % Thrust aligned w/ zenith.
-
+a = @(X, V, m, drag)  (T_mag * uf.hat(X) - drag) / m / 1e3 - earth.mu * X / norm(X)^3; % Thrust aligned w/ zenith.
 
 %% Iteration
 
@@ -159,14 +159,29 @@ for i = 1:N
     V_wind = V_i;
     V_WF = V_R(i, :) - V_i;
     
-    fp_angle(i) = uf.angle_between(X_R(i, :), V_R(i, :));
+    fp_angle(i) = 90 - uf.angle_between(X_R(i, :), V_R(i, :));
     fp_angle_wind(i) = 90 - uf.angle_between(X_R(i, :), V_WF);
     aoa(i) = uf.angle_between(burn_direction, V_WF);
+
+    % Drag Calculation
+    if alt(i) < 100
+        [temp, speed_of_sound, pressure, rho] = atmosisa(alt(i));
+        q = 0.5 * rho * norm(V_WF*1e3)^2;
+        drag = 0.5 * q * 0.5 * 16 * pi * uf.hat(V_WF);
+        if isnan(drag(1))
+            drag = [0, 0, 0];
+        end
+    else
+        drag = [0, 0, 0];
+    end
+
+    % Analytical Orbit
+    orbit_now = OrbitalElements(X_R(i, :), V_R(i, :), earth.mu);
 
     energy(i) = 0.5 * norm(V_R(i,:)) ^ 2 - earth.mu / norm(X_R(i, :));
     
     % RK4 Solver
-    [X_R, V_R] = uf.RK4_launch(a, m(i), dt, X_R, V_R, i);
+    [X_R, V_R] = uf.RK4_launch(a, m(i), dt, X_R, V_R, drag, i);
     A_R(i, :) = (V_R(i + 1, :) - V_R(i, :)) / dt;
 
     % Plot current position.
@@ -189,15 +204,15 @@ for i = 1:N
     end
 
     if roll_program_flag == 1
-        burn_direction = uf.hat(uf.rodrigues_rot(uf.hat(V_WF), uf.hat(cross(V_WF, V_wind)), 0.4163 * dt));
-        a = @(X, V, m)  T_mag * burn_direction / m / 1e3 - earth.mu * X / norm(X)^3;
+        burn_direction = uf.hat(uf.rodrigues_rot(uf.hat(V_WF), uf.hat(cross(V_WF, V_wind)), 0.15 * dt));
+        a = @(X, V, m, drag)  (T_mag * burn_direction - drag) / m / 1e3 - earth.mu * X / norm(X)^3;
 
         if uf.angle_between(V_WF, V_R(i, :)) <= 3
             disp("Roll program finished @ timestep " + string(i))
             disp(string(alt(i)) + " km")
             disp(string("Flight path angle = " + fp_angle(i)) + " deg")
             roll_program_flag = 2;
-            a = @(X, V, m)  T_mag * uf.hat(V) / m / 1e3 - earth.mu * X / norm(X)^3;
+            a = @(X, V, m, drag)  (T_mag * uf.hat(V) - drag) / m / 1e3 - earth.mu * X / norm(X)^3;
         end
     end
 
@@ -206,36 +221,39 @@ for i = 1:N
         dt = 2;
         disp(string(alt(i)) + " km")
         T_mag = 0;
-        a = @(X, V, m) - earth.mu * X / norm(X)^3; % T_mag update.
+        a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
         m_dot = 0;
         m1 = 0;
+        second_stage_threshold = alt(i);
     end
 
     if abs(alt(i) - second_stage_threshold) < 1 && second_stage_flag == 0
-        figure(1)
-        view(240, 30)
         disp("Second stage burn! @ timestep " + string(i))
         disp(string(alt(i)) + " km")
-        dt = 1;
+        dt = 0.5;
         second_stage_flag = 1;
         m_dot = m_dot2;
     end
 
     if second_stage_flag == 1
         % burn_direction = (uf.t_xX(dec_r, ra_r) * rho')';
-        burn_direction = uf.hat(cross(n_ecliptic, uf.hat(X_R(i, :))));
-        a = @(X, V, m)  T_mag2 * burn_direction / m / 1e3 - earth.mu * X / norm(X)^3; % T_mag update.
+        % burn_direction = uf.hat(cross(n_ecliptic, uf.hat(X_R(i, :))));
+        burn_direction = uf.hat(V_R(i, :));
+        a = @(X, V, m, drag)  T_mag2 * burn_direction / m / 1e3 - earth.mu * X / norm(X)^3; % T_mag update.
     end
 
     % if m(i) <= m2 || norm(V_R(i, :)) >= (v_parking_orbit - 0.05) && second_stage_flag == 1
-    if m(i) <= m2 || abs(energy(i) - e_parking_orbit) < 0.5 && second_stage_flag == 1
+    % if m(i) <= m2 || abs(energy(i) - e_parking_orbit) < 0.5 && second_stage_flag == 1
+    if (orbit_now.r_apoapsis - earth.r) > 416 && second_stage_flag == 1
         disp("Second stage burnout @ timestep " + string (i))
+        figure(1)
+        view(240, 30)
         disp(m(i) - m2)
         second_stage_flag = 2;
-        dt = 20;
+        dt = 10;
         disp(string(alt(i)) + " km")
         T_mag = 0;
-        a = @(X, V, m) - earth.mu * X / norm(X)^3; % T_mag update.
+        a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
         m_dot = 0;
         m2 = 0;
     end

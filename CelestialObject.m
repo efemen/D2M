@@ -66,6 +66,10 @@ classdef CelestialObject
 
             obj.heliocentric_pos = [obj.r_orbit * cosd(obj.t_anomaly), ...
                                     obj.r_orbit * sind(obj.t_anomaly), 0];
+
+            obj.heliocentric_vel = sqrt(obj.mu_sun / obj.r_orbit) * ...
+                                    [-sind(obj.t_anomaly), ...
+                                    cosd(obj.t_anomaly), 0];
         end
 
     end

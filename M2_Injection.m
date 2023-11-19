@@ -9,7 +9,9 @@ clear; clc; close all;
 
 %% User Parameters
 
-jdt = juliandate([2043, 12, 28, 16, 44, 0]);
+% jdt = juliandate([2043, 12, 28, 16, 44, 0]);
+injection_date = [2043, 12, 30, 16, 44, 0];
+jdt = juliandate(injection_date);
 
 lat = 23.44; % Arbitrary for now
 lon = 121.5;
@@ -160,7 +162,7 @@ for i = 1:N
        X_SC(i + 1, :) = X_SC(i, :);
        % [ra, dec] = uf.ECI2raDec(X_SC(i, :));
        % V_hat = uf.t_xX(dec, ra) * [1; 0; 0];
-       V_SC(i + 1, :) = injection_velocity * uf.hat(V_SC(i, :));
+       V_SC(i + 1, :) = injection_velocity  * uf.hat(V_SC(i, :));
        % V_SC(i + 1, :) = (V_hat * injection_velocity)';
        V_SC(i, :) =  V_SC(i + 1, :);
        departureThreshold = 0;
@@ -184,39 +186,39 @@ for i = 1:N
     end
 
 
-   % Plot current position.
-    figure(1)
-    plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
-    rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
-
+   % % Plot current position.
+   %  figure(1)
+   %  plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
+   %  rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
+   % 
 
    % Real-time energy plots for monitoring.
-   figure(2)
-   subplot(3,1,1)
-   plot(T(i),e(i),".r");
-   xlabel("Time (s)")
-   ylabel("SE (km^2/s^2)")
-   ylim([-30 5])
-   grid on
-   hold on
-   
-   subplot(3,1,2)
-   plot(T(i),norm(X_SC(i,:)),'.r')
-%    ylim([6700, 7000])
-   xlabel("Time (s)")
-   ylabel("R (km)")
-   grid on
-   hold on
-
-   subplot(3,1,3)
-   plot(T(i),norm(A_SC(i,:)),'.r')
-   xlabel("Time (s)")
-   ylabel("Acceleration (km/s^2)")
-%    ylim([0,12])
-   grid on
-   hold on
-   pause(0.0001)
-   % delete(error_q)
+%    figure(2)
+%    subplot(3,1,1)
+%    plot(T(i),e(i),".r");
+%    xlabel("Time (s)")
+%    ylabel("SE (km^2/s^2)")
+%    ylim([-30 5])
+%    grid on
+%    hold on
+% 
+%    subplot(3,1,2)
+%    plot(T(i),norm(X_SC(i,:)),'.r')
+% %    ylim([6700, 7000])
+%    xlabel("Time (s)")
+%    ylabel("R (km)")
+%    grid on
+%    hold on
+% 
+%    subplot(3,1,3)
+%    plot(T(i),norm(A_SC(i,:)),'.r')
+%    xlabel("Time (s)")
+%    ylabel("Acceleration (km/s^2)")
+% %    ylim([0,12])
+%    grid on
+%    hold on
+%    pause(0.0001)
+%    % delete(error_q)
 
 end
 
@@ -225,3 +227,8 @@ V_SOI = V_SC(soi_timestep, :);
 X_SOI = X_SC(soi_timestep, :);
 disp("Time elapsed since launch is " + string(T_SOI) + " seconds.")
 
+X_SOI = uf.ECI2ICRF(X_SOI');
+V_SOI = uf.ECI2ICRF(V_SOI');
+jdt_SOI =  juliandate(datetime(injection_date) + seconds(T_SOI));
+
+save SOI_OUT.mat X_SOI V_SOI T_SOI jdt_SOI
