@@ -8,7 +8,8 @@ altitude_km  = 0 % Altitude from surface in km
 ref_area_m2 = 1 % Referance area for the rocket in m^2
 alpha_deg   = 0 % Angle of attack in degrees )not 
 end
-[T,a,P_static_Pa,rho,nu]=atmosisa(altitude_km*1000); 
+
+[T,a,P_static_Pa,rho,nu]=atmosisa(altitude_km*1000, "extended", "on", "action", "None"); 
 pDyn_Pa=0.5*rho*(V_ECEF_mag_km_s*1000)^2;
 
 % Use drag data from Sutton's book. See "create_drag_data.m"
@@ -18,7 +19,14 @@ filedata = load("drag_data.mat");
 end
 
 speed_Ma=V_ECEF_mag_km_s*1000/a;
-coef_drag=interp2(filedata.drag_data.alpha_deg,filedata.drag_data.Speed_Ma,filedata.drag_data.drag_coef_table,alpha_deg,speed_Ma);
+
+if speed_Ma < 5
+    coef_drag=interp2(filedata.drag_data.alpha_deg,filedata.drag_data.Speed_Ma,filedata.drag_data.drag_coef_table,alpha_deg,speed_Ma);
+else
+    speed_Ma = 5;
+    coef_drag=interp2(filedata.drag_data.alpha_deg,filedata.drag_data.Speed_Ma,filedata.drag_data.drag_coef_table,alpha_deg,speed_Ma);
+    speed_Ma = V_ECEF_mag_km_s*1000/a;
+end
 
 drag_N=ref_area_m2*coef_drag*pDyn_Pa;
 end

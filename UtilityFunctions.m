@@ -41,10 +41,16 @@ classdef UtilityFunctions
 
         function v_hat = hat(obj, v)
             v_hat = v / norm(v);
+            if isnan(v_hat)
+                v_hat = zeros(size(v));
+            end
         end
 
         function angle = angle_between(obj, v1, v2)
             angle = acosd(dot(v1, v2) / (norm(v1) * norm(v2)));
+            if isnan(angle)
+                angle = 0;
+            end
         end
 
         function v_rot = rodrigues_rot(obj, v, k, angle)

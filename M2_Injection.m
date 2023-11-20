@@ -9,11 +9,10 @@ clear; clc; close all;
 
 %% User Parameters
 
-% jdt = juliandate([2043, 12, 28, 16, 44, 0]);
 injection_date = [2043, 12, 30, 16, 44, 0];
 jdt = juliandate(injection_date);
 
-lat = 23.44; % Arbitrary for now
+lat = 23.44;
 lon = 121.5;
 
 sdt = siderealTime(jdt) + lon;
@@ -186,22 +185,22 @@ for i = 1:N
     end
 
 
-   % % Plot current position.
-   %  figure(1)
-   %  plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
-   %  rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
-   % 
+   % Plot current position.
+    % figure(1)
+    % plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
+    % rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
+    % 
 
    % Real-time energy plots for monitoring.
-%    figure(2)
-%    subplot(3,1,1)
-%    plot(T(i),e(i),".r");
-%    xlabel("Time (s)")
-%    ylabel("SE (km^2/s^2)")
-%    ylim([-30 5])
-%    grid on
-%    hold on
-% 
+   % figure(2)
+   % subplot(3,1,1)
+   % plot(T(i),e(i),".r");
+   % xlabel("Time (s)")
+   % ylabel("SE (km^2/s^2)")
+   % ylim([-30 5])
+   % grid on
+   % hold on
+
 %    subplot(3,1,2)
 %    plot(T(i),norm(X_SC(i,:)),'.r')
 % %    ylim([6700, 7000])

@@ -7,6 +7,7 @@ classdef LaunchVehicle
         m_dot % current m_dot
         T     % current thrust
         stage % current stage
+        burning % is burning?
 
         m0    % launch mass
         m_p1
@@ -46,6 +47,7 @@ classdef LaunchVehicle
         function obj = stop_burn(obj)
             obj.T = 0;
             obj.m_dot = 0;
+
         end
 
         function obj = start_burn(obj)
@@ -60,6 +62,7 @@ classdef LaunchVehicle
 
 
         function obj = stage_sep(obj)
+
             if obj.stage == 1
                 obj.m = obj.m - obj.m_inert1;
                 obj.T = obj.T_mag2;
@@ -77,3 +80,4 @@ classdef LaunchVehicle
 
     end
 end
+

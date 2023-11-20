@@ -18,7 +18,9 @@ X_SOI(3) = 0;
 
 X_i =  X_SOI' + earth.heliocentric_pos;
 V_i =  V_SOI' + earth.heliocentric_vel;
-V_i = 0.996 * V_i;
+% V_i = 0.996 * V_i;
+V_i = 0.9967 * V_i;
+
 
 %% Setup Geometry and Plots
 figure(1)
@@ -84,7 +86,7 @@ V_SC = X_SC;
 dt = 86400/2; % seconds
 min_dist = 1e5;
 
-for i = 1:N
+for i = 2:N
     t = T(i);
     Me = 2 * pi * (t + t_periapsis) / orbit_now.period;
     t_fun = @(E) E - orbit_now.e * sin(E) - Me;
@@ -92,7 +94,7 @@ for i = 1:N
     t_anomaly_now = rad2deg(2 * atan(tan(E/2) * sqrt((1+orbit_now.e)/(1-orbit_now.e))));
     r_now = (orbit_now.h^2 / earth.mu_sun) ./ (1 + orbit_now.e * cosd(t_anomaly_now));
     X_SC(i, :) = peri_rot * r_now * [cosd(t_anomaly_now); sind(t_anomaly_now)];
-
+    V_SC(i, :) = (X_SC(i, :) - X_SC(i-1, :)) / dt;
 
     SC_plot.XData = X_SC(i, 1); 
     SC_plot.YData = X_SC(i, 2);
@@ -106,20 +108,22 @@ for i = 1:N
     mars_plot.XData = mars.heliocentric_pos(1);
     mars_plot.YData = mars.heliocentric_pos(2);
 
-    pause(0.001)
+    pause(0.01)
 
     sc2mars =  mars.heliocentric_pos(1:2) - X_SC(i, :);
     
     if norm(sc2mars) < mars.r_soi
         disp("SOI REACHED")
-        dt = 10;
-        min_dist = norm(sc2mars);
+        break
     end
 
     T(i + 1) = t + dt;
 end
 
+X_SC_mars = mars.heliocentric_pos - [X_SC(i, :), 0];
+V_SC_mars = mars.heliocentric_vel - [V_SC(i, :), 0];
+T_SC_mars = T(i);
 
+jdt_mars = juliandate(datetime(jdt, 'convertfrom', 'juliandate') + seconds(T_SC_mars));
 
-
-
+save SOI_IN.mat V_SC_mars X_SC_mars jdt_mars
