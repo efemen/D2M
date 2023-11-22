@@ -9,13 +9,17 @@ clear; clc; close all;
 
 %% User Parameters
 
-injection_date = [2043, 12, 30, 16, 44, 0];
+load parking_orbit.mat
+
+three_weeks = imshow(imread("3weeks.png"));
+
+figure(99)
+
+pause(3)
+close all
+
 jdt = juliandate(injection_date);
-
-lat = 23.44;
-lon = 121.5;
-
-sdt = siderealTime(jdt) + lon;
+sdt = siderealTime(jdt); % Earth map update
 
 %% Object Initilization
 
@@ -57,11 +61,12 @@ set(earth_map,'CData', earthMap,'FaceColor','texturemap',"EdgeColor","none")
 hold on
 colormap white
 axis equal
-set(gca,'Color','#BEBEBE');
-set(gca, 'GridColor', 'white'); 
-rotate(earth_map, [0 0 1], siderealTime(jdt))
+set(gca, 'color', 'none')
+set(gca, 'GridColor', 'none'); 
+rotate(earth_map, [0 0 1], sdt)
+set(gcf, 'Position',  [1200, 0, 800, 800])
+set(gca,'Visible','off');
 
-view(240, 30)
 
 ecliptic_plane = surf(X_ecliptic, Y_ecliptic, Z_ecliptic);
 ecliptic_plane.FaceAlpha = 0.2;
@@ -76,7 +81,7 @@ text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Po
 quiver3(0, 0, 0, 1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "yellow");
 text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉")
 
-quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
+earth_vel_vector = quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
 text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨")
 
 
@@ -115,23 +120,10 @@ V_SC = X_SC;
 A_SC = V_SC;
 
 
-A = 90 - 23.44;
-rho = [sind(A), cosd(A), 0];
-% V_hat = uf.t_xX(lat, sdt) * rho';
-
-% R_i = 1e3 * [-1.6338,6.1217, 2.6593];
-R_i = SC_R * [1,0,0];
-[lon, lat] = uf.ECI2raDec(R_i);
-
-% V_i = [-0.9662, -0.2579, 0] *  7.6166;
-V_i = sqrt(earth.mu / SC_R) * uf.t_xX(lat, lon) * rho';
-
 earth_w = 2 * pi / 8.61640905e4;
 
-
-
-X_SC(1,:) = R_i;
-V_SC(1,:) = V_i;
+X_SC(1,:) = X_injection;
+V_SC(1,:) = V_injection;
 
 e = zeros(N,1);
 u = e;
@@ -139,7 +131,8 @@ ke = u;
 
 a = @(X) -earth.mu * X / norm(X)^3;
 
-plot3(departure_coordinates(1), departure_coordinates(2), departure_coordinates(3), '*', 'MarkerSize', 30)
+plot3(departure_coordinates(1), departure_coordinates(2), departure_coordinates(3), "pentagram", 'MarkerSize', 20, "MarkerFaceColor", "cyan");
+text(departure_coordinates(1)*1.1, departure_coordinates(2)*1.1, departure_coordinates(3)*1.1, "Injection Burn Point", "Color", "cyan")
 
 for i = 1:N
     A_SC(i,:) = a(X_SC(i,:));
@@ -153,17 +146,17 @@ for i = 1:N
     u(i) = -earth.mu / norm(X_SC(i,:));
     ke(i) = 0.5 * norm(V_SC(i,:))^2;
     e(i) = u(i) + ke(i);
-    
+    [ra_r, dec_r] = uf.ECI2raDec(X_SC(i, :));
+
   
     if abs(norm(X_SC(i,:) - departure_coordinates)) < departureThreshold
        disp("Departure time!")
        X_SC(i,:) = departure_coordinates;
        X_SC(i + 1, :) = X_SC(i, :);
-       % [ra, dec] = uf.ECI2raDec(X_SC(i, :));
-       % V_hat = uf.t_xX(dec, ra) * [1; 0; 0];
+
        V_SC(i + 1, :) = injection_velocity  * uf.hat(V_SC(i, :));
-       % V_SC(i + 1, :) = (V_hat * injection_velocity)';
        V_SC(i, :) =  V_SC(i + 1, :);
+
        departureThreshold = 0;
        departureStatus = 1;
        disp("Departure trajectory achieved!")
@@ -177,47 +170,23 @@ for i = 1:N
        T(i:end) = T(i):dt:(T(i) + dt*ts_left);
        timestepStatus = 1;
     end
+
+    if norm(X_SC(i, :)) > timestepThreshold * 10 && timestepStatus == 1
+        dt = 1000;
+    end
     
     if norm(X_SC(i,:)) > earth.r_soi
       disp("SOI radius reached.")
-      soi_timestep = i;
+      soi_timestep = i;      
       break
     end
 
 
    % Plot current position.
-    % figure(1)
-    % plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
-    % rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
-    % 
-
-   % Real-time energy plots for monitoring.
-   % figure(2)
-   % subplot(3,1,1)
-   % plot(T(i),e(i),".r");
-   % xlabel("Time (s)")
-   % ylabel("SE (km^2/s^2)")
-   % ylim([-30 5])
-   % grid on
-   % hold on
-
-%    subplot(3,1,2)
-%    plot(T(i),norm(X_SC(i,:)),'.r')
-% %    ylim([6700, 7000])
-%    xlabel("Time (s)")
-%    ylabel("R (km)")
-%    grid on
-%    hold on
-% 
-%    subplot(3,1,3)
-%    plot(T(i),norm(A_SC(i,:)),'.r')
-%    xlabel("Time (s)")
-%    ylabel("Acceleration (km/s^2)")
-% %    ylim([0,12])
-%    grid on
-%    hold on
-%    pause(0.0001)
-%    % delete(error_q)
+    figure(1)
+    plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
+    rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
+    view(ra_r + sdt + 30, 40);
 
 end
 

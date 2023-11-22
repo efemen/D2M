@@ -18,8 +18,9 @@ X_SOI(3) = 0;
 
 X_i =  X_SOI' + earth.heliocentric_pos;
 V_i =  V_SOI' + earth.heliocentric_vel;
-% V_i = 0.996 * V_i;
-V_i = 0.9967 * V_i;
+dV =  norm((1 - 0.9968) * V_i);
+% V_i = 0.9967 * V_i;
+V_i = 0.9966 * V_i;
 
 
 %% Setup Geometry and Plots
