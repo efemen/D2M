@@ -126,17 +126,18 @@ for i = 1:776
     end
 
     if abs(norm(X_SC(i,:)) - orbit_now.r_periapsis) < 100 && capture_flag == 0        
-        % camtarget([0 0 0])
-        xlim([-3e4 3e4])
-        ylim([-3e4 3e4])
+        xlim([-2e4 2e4])
+        ylim([-2e4 2e4])
         disp("Periapsis reached.")
-        V_ideal = uf.hat(V_SC(i, :)) * sqrt(mars.mu / norm(X_SC(i, :)));
-        % dt = 1000;
+        V_ideal = uf.hat(uf.rodrigues_rot(X_SC(i + 1, :), [0, 0, 1], 90)) * sqrt(mars.mu / norm(X_SC(i, :)));
         dV = V_ideal - V_SC(i, :);
         V_SC(i, :) =  V_ideal;
         V_SC(i + 1, :)  = V_SC(i, :);
-        disp("Capture burn complete. dV = " + string(norm(V_ideal)) + " km/s")
+        disp("Capture burn complete. dV = " + string(norm(dV)) + " km/s")
         disp("Circular orbit at r = " + string(norm(X_SC(i, :)))+ " km")
+        dv_sum = dv_sum + norm(dV);
+        disp("Total mission dV = " + string(dv_sum) + " km/s")
+
         capture_flag = 1;
     end
 

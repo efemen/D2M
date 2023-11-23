@@ -161,6 +161,7 @@ for i = 1:N
        departureStatus = 1;
        disp("Departure trajectory achieved!")
        disp("dV = " + injection_dv + " km/s")
+       dv_sum = dv_sum + injection_dv;
     end
     
     if norm(X_SC(i,:)) > timestepThreshold && timestepStatus == 0
@@ -193,10 +194,10 @@ end
 T_SOI = T(soi_timestep);
 V_SOI = V_SC(soi_timestep, :);
 X_SOI = X_SC(soi_timestep, :);
-disp("Time elapsed since launch is " + string(T_SOI) + " seconds.")
+disp("Time elapsed since injection date is " + string(T_SOI) + " seconds.")
 
 X_SOI = uf.ECI2ICRF(X_SOI');
 V_SOI = uf.ECI2ICRF(V_SOI');
 jdt_SOI =  juliandate(datetime(injection_date) + seconds(T_SOI));
 
-save SOI_OUT.mat X_SOI V_SOI T_SOI jdt_SOI
+save SOI_OUT.mat X_SOI V_SOI T_SOI jdt_SOI dv_sum

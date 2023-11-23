@@ -7,7 +7,7 @@ addpath("drag_function/");
 lat = 23.43928;
 lon = 132.9424;
 launch_date = datetime([2043, 12, 8, 15, 59, 0]);
-injection_date = datetime([2043, 12, 30, 16, 45, 0]);
+injection_date = datetime([2043, 12, 30, 15, 45, 0]);
 
 jdt = juliandate(launch_date);
 
@@ -117,28 +117,53 @@ A_R = V_R;
 X_R(1, :) = R_i;
 V_R(1, :) = V_i;
 
-% Rocket Parameters -- RD-180, ATLAS 401
+% % Rocket Parameters -- RD-180, ATLAS 401
+% 
+% m0 = 333e3; % kg
+% mp = 284e3; % kg
+% 
+% m1 = m0 - mp; %kg
+% m1_inert = 21054;
+% m(1) = m0;    % kg
+% m2 = m1 - m1_inert - 20830; % kg
+% 
+% g0 = 9.81; % m/s^2
+% I_sp = 320; % s
+% c = I_sp * g0; % m/s
+% m_dot = 1250; % kg/s
+% T_mag = m_dot * c; % N
+% 
+% % Second Stage Parameters -- Centaur Upper Stage
+% 
+% I_sp2 = 450; % s
+% c2 = I_sp * g0; % m/s
+% m_dot2 = 22.453; % kg/s
+% T_mag2 = m_dot * c2; % N
 
-m0 = 333e3; % kg
-mp = 284e3; % kg
+% LV Parameters -- RD-180, ATLAS 401
 
-m1 = m0 - mp; %kg
-m1_inert = 21054;
+m0 = 331781.70; % Launch mass, kg
+mp1 = 284089;   % First stage propellant, kg
+mp2 = 20830;    % Second stage propellant, kg
+m1_inert = 21054; % kg
+
+m1 = m0 - mp1; % MECO mass,
 m(1) = m0;    % kg
-m2 = m1 - m1_inert - 20830; % kg
+m2 = m1 - m1_inert - mp2; % SECO mass, kg
 
 g0 = 9.81; % m/s^2
-I_sp = 320; % s
+I_sp = 311; % s
 c = I_sp * g0; % m/s
-m_dot = 1250; % kg/s
+m_dot = 1253; % kg/s
 T_mag = m_dot * c; % N
 
 % Second Stage Parameters -- Centaur Upper Stage
 
 I_sp2 = 450; % s
 c2 = I_sp * g0; % m/s
-m_dot2 = 22.453; % kg/s
+m_dot2 = 22; % kg/s
 T_mag2 = m_dot * c2; % N
+
 
 second_stage_flag = 0; % Boolean
 roll_program_flag = 0; % Boolean
@@ -146,7 +171,6 @@ roll_program_flag = 0; % Boolean
 roll_program_threshold = 0.5; % km
 burn_direction = uf.hat(X_R(1, :)); % Unit  vector
 
-second_stage_threshold = 490;  % km
 r_parking_orbit = earth.r + 500; % km
 v_parking_orbit = sqrt(earth.mu / r_parking_orbit);
 w_parking_orbit = rad2deg(v_parking_orbit / r_parking_orbit);
@@ -231,19 +255,13 @@ for i = 1:N
         end
     end
 
-    if m(i) <= m1
+    if m(i) <= m1 && second_stage_flag == 0
         disp("MECO! @ timestep " + string(i))
-        dt = 2;
         disp(string(alt(i)) + " km")
         a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
         m(i) = m(i) - m1_inert;
         m1 = 0;
-        second_stage_threshold = alt(i);
-        T_mag = 0;
         aero_loss = aero_sum;
-    end
-
-    if abs(alt(i) - second_stage_threshold) < 1 && second_stage_flag == 0
         disp("Second stage burn! @ timestep " + string(i))
         disp(string(alt(i)) + " km")
         dt = 0.5;
@@ -260,10 +278,8 @@ for i = 1:N
 
     if (orbit_now.r_apoapsis - earth.r) > 490 && second_stage_flag == 1
         disp("Coasting until circularization burn... @ timestep " + string (i))
-        figure(1)
-        view(200, 30)
         second_stage_flag = 2;
-        dt = 10;
+        dt = 7;
         disp(string(alt(i)) + " km")
         m_dot = 0;
         T_mag = 0;
@@ -271,8 +287,8 @@ for i = 1:N
         g_loss = g_sum;
     end
 
-    if second_stage_flag == 2 && abs(alt(i) - 510) < 3
-        disp("Circularization burn!")
+    if second_stage_flag == 2 && abs(alt(i) - 550) < 3
+        disp("Circularization burn! @ timestep = " + num2str(i))
         disp(alt(i));
         second_stage_flag = 3;
         dt = 0.5;
@@ -289,7 +305,7 @@ for i = 1:N
 
         if abs(energy(i) - e_parking_orbit) < 0.15
             a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
-            disp("Circularization complete!")
+            disp("Circularization complete! @ timestep = " + num2str(i))
             dt = 10;
             disp("Perigee height " + string(orbit_now.r_periapsis - earth.r) + " km")
             disp("Apogee height " + string(orbit_now.r_apoapsis - earth.r) + " km")
@@ -362,5 +378,5 @@ dw = mod(w_parking_orbit * seconds(time_to_injection), 360);    % True anomaly c
 X_injection = uf.rodrigues_rot(X_R(i, :), uf.hat(orbit_now.h_vector), dw);
 V_injection = uf.rodrigues_rot(V_R(i, :), uf.hat(orbit_now.h_vector), dw);
 
-save parking_orbit.mat X_injection V_injection injection_date
+save parking_orbit.mat X_injection V_injection injection_date dv_sum
 

@@ -1,8 +1,7 @@
 clear; clc; close all;
 
-load SOI_OUT.mat X_SOI T_SOI V_SOI jdt_SOI
+load SOI_OUT.mat X_SOI T_SOI V_SOI jdt_SOI dv_sum
 
-% jdt = juliandate(datetime([2043, 12, 28, 16, 44, 0]) + seconds(T_SOI));
 jdt = jdt_SOI;
 
 %% Object Initilization
@@ -18,10 +17,11 @@ X_SOI(3) = 0;
 
 X_i =  X_SOI' + earth.heliocentric_pos;
 V_i =  V_SOI' + earth.heliocentric_vel;
-dV =  norm((1 - 0.9968) * V_i);
-% V_i = 0.9967 * V_i;
-V_i = 0.9966 * V_i;
 
+dV =  norm((1 - 0.9969) * V_i);
+V_i = 0.9969 * V_i;
+
+dv_sum = dv_sum + dV;
 
 %% Setup Geometry and Plots
 figure(1)
@@ -113,6 +113,11 @@ for i = 2:N
 
     sc2mars =  mars.heliocentric_pos(1:2) - X_SC(i, :);
     
+    if norm(sc2mars) < 1.1 * mars.r_soi
+        dt = dt/2;
+        disp("SOI vicinity")
+    end
+
     if norm(sc2mars) < mars.r_soi
         disp("SOI REACHED")
         break
@@ -127,4 +132,4 @@ T_SC_mars = T(i);
 
 jdt_mars = juliandate(datetime(jdt, 'convertfrom', 'juliandate') + seconds(T_SC_mars));
 
-save SOI_IN.mat V_SC_mars X_SC_mars jdt_mars
+save SOI_IN.mat V_SC_mars X_SC_mars jdt_mars dv_sum
