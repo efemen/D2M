@@ -41,15 +41,17 @@ n_mars_velocity = uf.rodrigues_rot(n_sun, n_ecliptic, -90);
 % Plots
 
 figure(1);
+set(gcf, 'Position',  [500, 800, 800, 800])
 mars_map = surf(X_E,Y_E,-Z_E);
 marsMap = imread("mars_Map.jpg");
 set(mars_map,'CData', marsMap,'FaceColor','texturemap',"EdgeColor","none")
 hold on
 colormap white
 axis equal
-set(gca,'Color','#BEBEBE');
-set(gca, 'GridColor', 'white'); 
-% rotate(earth_map, [0 0 1], siderealTime(jdt))
+set(gca,'Color','none');
+set(gca, 'GridColor', 'none'); 
+set(gca,'Visible','off');
+
 
 view(240, 30)
 % 
@@ -57,8 +59,8 @@ view(240, 30)
 % ecliptic_plane.FaceAlpha = 0.2;
 % hold on
 
-quiver3(6378,0,0, 4000, 0, 0,"filled","LineWidth", 3,"ShowArrowHead","on", "Color","green","MaxHeadSize",10);
-text(6378 * 2,0,0,"Vernal Eq. ♈")
+quiver3(mars.r, 0,0, 4000, 0, 0,"filled","LineWidth", 3,"ShowArrowHead","on", "Color","green","MaxHeadSize",10);
+text(mars.r * 2,0,0,"Vernal Eq. ♈")
 % 
 % quiver3(0, 0, 0, 1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "blue");
 % text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole")
@@ -124,17 +126,18 @@ for i = 1:776
     end
 
     if abs(norm(X_SC(i,:)) - orbit_now.r_periapsis) < 100 && capture_flag == 0        
-        % camtarget([0 0 0])
-        xlim([-5e4 5e4])
-        ylim([-5e4 5e4])
+        xlim([-2e4 2e4])
+        ylim([-2e4 2e4])
         disp("Periapsis reached.")
-        V_ideal = uf.hat(V_SC(i, :)) * sqrt(mars.mu / norm(X_SC(i, :)));
-        % dt = 1000;
+        V_ideal = uf.hat(uf.rodrigues_rot(X_SC(i + 1, :), [0, 0, 1], 90)) * sqrt(mars.mu / norm(X_SC(i, :)));
         dV = V_ideal - V_SC(i, :);
         V_SC(i, :) =  V_ideal;
         V_SC(i + 1, :)  = V_SC(i, :);
-        disp("Capture burn complete. dV = " + string(norm(V_ideal)) + " km/s")
+        disp("Capture burn complete. dV = " + string(norm(dV)) + " km/s")
         disp("Circular orbit at r = " + string(norm(X_SC(i, :)))+ " km")
+        dv_sum = dv_sum + norm(dV);
+        disp("Total mission dV = " + string(dv_sum) + " km/s")
+
         capture_flag = 1;
     end
 
@@ -144,15 +147,20 @@ for i = 1:776
     rotate(mars_map, [0 0 1], rad2deg(mars_w*dt), c_Rot)
 
 
+    if norm(X_SC(i, :)) < mars.r - 1
+        disp("Mars impact!")
+        break
+    end
+
 end
 
-T_SOI = T(soi_timestep);
-V_SOI = V_SC(soi_timestep, :);
-X_SOI = X_SC(soi_timestep, :);
-disp("Time elapsed since launch is " + string(T_SOI) + " seconds.")
-
-X_SOI = uf.ECI2ICRF(X_SOI');
-V_SOI = uf.ECI2ICRF(V_SOI');
-jdt_SOI =  juliandate(datetime(injection_date) + seconds(T_SOI));
+% T_SOI = T(soi_timestep);
+% V_SOI = V_SC(soi_timestep, :);
+% X_SOI = X_SC(soi_timestep, :);
+% disp("Time elapsed since launch is " + string(T_SOI) + " seconds.")
+% 
+% X_SOI = uf.ECI2ICRF(X_SOI');
+% V_SOI = uf.ECI2ICRF(V_SOI');
+% jdt_SOI =  juliandate(datetime(injection_date) + seconds(T_SOI));
 
 
