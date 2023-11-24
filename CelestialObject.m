@@ -22,7 +22,7 @@ classdef CelestialObject
         
         function obj = CelestialObject(name, mass, r, r_orbit, tilt, jdt)
             % Constants
-            m_sun = 1.989e30;  % kg
+            m_sun = 1.98847e30;  % kg
             G = 6.6743015e-20; %  km^3 k^-1 s^-2
             mu_sun = m_sun * G;
 

@@ -1,25 +1,26 @@
 clear; clc; close all;
 
 addpath("drag_function/");
+addpath("images/");
 
 % Launch will take place from East Pacific. 8 December 2043.
 
 lat = 23.43928;
 lon = 132.9424;
 launch_date = datetime([2043, 12, 8, 15, 59, 0]);
-injection_date = datetime([2043, 12, 30, 15, 45, 0]);
+injection_date = datetime([2043, 12, 30, 16, 45, 0]);
 
 jdt = juliandate(launch_date);
 
 sdt = mod(siderealTime(jdt) + lon, 360);
 
 
-earth = CelestialObject("Earth", 5.9722e24, 6371.0, 149.598e6, 23.43928, jdt);
+earth = CelestialObject("Earth", 5.97217e24, 6371.0084, 1.49598e8, 23.43928, jdt);
 uf = UtilityFunctions();
 
 %% Setup Geometry and Plots
 % Earth Sphere
-[X,Y,Z] = sphere;
+[X,Y,Z] = sphere(100);
 
 X_E = X * earth.r;
 Y_E = Y * earth.r;
@@ -43,55 +44,58 @@ n_earth_velocity = uf.rodrigues_rot(n_sun, n_ecliptic, -90);
 % Plots
 
 figure(1);
-set(gcf, 'Position',  [1200, 0, 800, 800])
+set(gcf, 'Position',  [1000, 600, 800, 800])
+msg = "";
 earth_map = surf(X_E,Y_E,-Z_E);
 earthMap = imread("world_Map.jpg");
 set(earth_map,'CData', earthMap,'FaceColor','texturemap',"EdgeColor","none")
 hold on
 colormap white
 axis equal
-set(gca, 'Color', 'none')
-set(gca, 'GridColor', 'white'); 
 rotate(earth_map, [0 0 1], siderealTime(jdt))
+
+uf.draw_space();
 
 view(185.53, -37.5487);
 campos([-1397, 18386,-6889])
 camva(9.07)
 camtarget([-194.8, 5976, 2695])
 
-% view(240, 30)
+
 ecliptic_plane = surf(X_ecliptic, Y_ecliptic, Z_ecliptic);
 ecliptic_plane.FaceAlpha = 0.2;
+ecliptic_plane.EdgeColor = "white";
+ecliptic_plane.EdgeAlpha = 0.2;
 hold on
 
 quiver3(6378,0,0, 4000, 0, 0,"filled","LineWidth", 3,"ShowArrowHead","on", "Color","green","MaxHeadSize",10);
-text(6378 * 2,0,0,"Vernal Eq. ♈")
+text(6378 * 2,0,0,"Vernal Eq. ♈", "Color", "white")
 
 quiver3(0, 0, 0, 1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "blue");
-text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole")
+text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole", "Color", "white")
 
 quiver3(0, 0, 0, 1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "yellow");
-text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉")
+text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉", "Color", "white")
 
 quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
-text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨")
+text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨", "Color", "white")
 
 figure(2)
-set(gcf, 'Position',  [100, 600, 800, 200])
+set(gcf, 'Position',  [100, 600, 800, 800])
 
 clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 
 %% Actual Launch
 
-A = 90;
-rho = [sind(A), cosd(A), 0];
+A = 90; % Launch azimuth
+rho = [sind(A), cosd(A), 0]; 
 V_hat = uf.t_xX(lat, sdt) * rho';
 
-R_i = [earth.r * sind(90 - lat) * cosd(sdt), earth.r * sind(90 - lat) * sind(sdt), earth.r * cosd(90 - lat)];
+R_i = [earth.r * sind(90 - lat) * cosd(sdt), earth.r * sind(90 - lat) * sind(sdt), earth.r * cosd(90 - lat)]; % launch site pos
 
-earth_w = 2 * pi / 8.61640905e4;
-magV = 2 * pi * earth.r * cosd(lat) / 8.61640905e4; % km/s
-V_i = (magV * V_hat)';
+earth_w = 7.292115e-5; % rad / s
+magV = earth_w * earth.r * cosd(lat); % km/s
+V_i = (magV * V_hat)'; % launch site velocity
 
 
 %% Setup Rocket Initial Conditions
@@ -109,6 +113,7 @@ drag_hist = m;
 q_hist = m;
 cd_hist = m;
 Ma_hist = m;
+g_hist = m;
 
 X_R = zeros(N, 3);
 V_R = X_R;
@@ -116,29 +121,6 @@ A_R = V_R;
 
 X_R(1, :) = R_i;
 V_R(1, :) = V_i;
-
-% % Rocket Parameters -- RD-180, ATLAS 401
-% 
-% m0 = 333e3; % kg
-% mp = 284e3; % kg
-% 
-% m1 = m0 - mp; %kg
-% m1_inert = 21054;
-% m(1) = m0;    % kg
-% m2 = m1 - m1_inert - 20830; % kg
-% 
-% g0 = 9.81; % m/s^2
-% I_sp = 320; % s
-% c = I_sp * g0; % m/s
-% m_dot = 1250; % kg/s
-% T_mag = m_dot * c; % N
-% 
-% % Second Stage Parameters -- Centaur Upper Stage
-% 
-% I_sp2 = 450; % s
-% c2 = I_sp * g0; % m/s
-% m_dot2 = 22.453; % kg/s
-% T_mag2 = m_dot * c2; % N
 
 % LV Parameters -- RD-180, ATLAS 401
 
@@ -207,7 +189,8 @@ for i = 1:N
     drag_hist(i) = norm(drag);
 
     % Losses
-    g_sum = g_sum + norm(earth.mu * X_R(i, :) / norm(X_R(i, :))^3 * dt);
+    g_sum = g_sum + norm(earth.mu * X_R(i, :) / norm(X_R(i, :))^3) * dt * sind(fp_angle_ecef(i));
+    g_hist(i) = norm(earth.mu * X_R(i, :) / norm(X_R(i, :))^3);
     aero_sum = aero_sum + norm(drag) * dt / m(i) / 1e3;
     dv_sum = dv_sum + T_mag * dt / m(i) / 1e3;
     
@@ -223,9 +206,11 @@ for i = 1:N
 
 
     % Plot current position.
+
     figure(1)
     plot3(X_R(i,1), X_R(i, 2), X_R(i, 3), ".","Color","#FF3131");
     rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
+
 
     velocity_vector = quiver3(X_R(i, 1), X_R(i, 2), X_R(i, 3), V_R(i, 1), V_R(i, 2), V_R(i, 3), 6e2, "Color", "blue");
     attitude_vector = quiver3(X_R(i, 1), X_R(i, 2), X_R(i, 3), burn_direction(1), burn_direction(2), burn_direction(3), 6e2, "Color", "green");
@@ -238,6 +223,7 @@ for i = 1:N
 
     if alt(i) > roll_program_threshold && alt(i) < 50 && roll_program_flag == 0
         disp("Roll program initated! @ timestep " + string(i))
+        msg = "Roll program initated! @ timestep " + string(i);
         dt = 1;
         roll_program_flag = 1;
     end
@@ -248,6 +234,7 @@ for i = 1:N
 
         if uf.angle_between(V_ECEF, V_R(i, :)) <= 1
             disp("Roll program finished @ timestep " + string(i))
+            msg = "Roll program finished @ timestep " + string(i);
             disp(string(alt(i)) + " km")
             disp(string("Flight path angle = " + fp_angle(i)) + " deg")
             roll_program_flag = 2;
@@ -263,6 +250,7 @@ for i = 1:N
         m1 = 0;
         aero_loss = aero_sum;
         disp("Second stage burn! @ timestep " + string(i))
+        msg = "Second stage burn! @ timestep " + string(i);
         disp(string(alt(i)) + " km")
         dt = 0.5;
         second_stage_flag = 1;
@@ -278,24 +266,25 @@ for i = 1:N
 
     if (orbit_now.r_apoapsis - earth.r) > 490 && second_stage_flag == 1
         disp("Coasting until circularization burn... @ timestep " + string (i))
+        msg = "Coasting until circularization burn... @ timestep " + string (i);
         second_stage_flag = 2;
         dt = 7;
         disp(string(alt(i)) + " km")
         m_dot = 0;
         T_mag = 0;
         a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
-        g_loss = g_sum;
+        figure(1)
+        view(0, 90 - earth.tilt)
     end
 
     if second_stage_flag == 2 && abs(alt(i) - 550) < 3
         disp("Circularization burn! @ timestep = " + num2str(i))
+        msg = "Circularization burn! @ timestep = " + num2str(i);
         disp(alt(i));
         second_stage_flag = 3;
         dt = 0.5;
         m_dot = m_dot2;
         T_mag = T_mag2;
-        figure(1)
-        view(0, 90 - earth.tilt)
     end
 
     if second_stage_flag == 3
@@ -306,6 +295,7 @@ for i = 1:N
         if abs(energy(i) - e_parking_orbit) < 0.15
             a = @(X, V, m, drag) - earth.mu * X / norm(X)^3; % T_mag update.
             disp("Circularization complete! @ timestep = " + num2str(i))
+            msg = "Circularization complete! @ timestep = " + num2str(i);
             dt = 10;
             disp("Perigee height " + string(orbit_now.r_periapsis - earth.r) + " km")
             disp("Apogee height " + string(orbit_now.r_apoapsis - earth.r) + " km")
@@ -313,6 +303,7 @@ for i = 1:N
             m_dot = 0;
             V_R(i + 1, :) = V_R(i,:);
             T_mag = 0;
+            g_loss = g_sum;
         end
     end
     
@@ -331,6 +322,7 @@ for i = 1:N
         V_R(i + 1, :) = V_R(i, :);
         
         disp("Orbit idealized dv = " + string(dv_ideal*1e3) + " m/s")
+        msg = "Orbit idealized dv = " + string(dv_ideal*1e3) + " m/s";
         
         orbit_now = OrbitalElements(X_R(i, :), V_R(i, :), earth.mu);
         X_R = X_R(1:i, :);
@@ -361,12 +353,41 @@ for i = 1:N
     delete(velocity_vector)
 
     figure(2)
-    plot(t, alt(i), "r.")
-    xlabel("Time (s)")
+    subplot(4, 1, 1)
+    title(msg)
+    plot(t, alt(i), "k.")
+    xlabel("Time [s]")
     ylabel("Altitude (km)")
-    ylim([0 1000])
-    xlim([0 1000])
-    grid on
+    ylim([0 700])
+    xlim([0 T(i) + 100])
+    grid on; grid minor;
+    hold on
+
+    subplot(4, 1, 2)
+    plot(t, norm(V_R(i, :)), "k.")
+    xlabel("Time [s]")
+    ylabel("V_ECI [km/s]")
+    ylim([0 9])
+    xlim([0 T(i) + 100])
+    grid on; grid minor;
+    hold on
+
+    subplot(4, 1, 3)
+    plot(t, fp_angle_ecef(i), "k.")
+    xlabel("Time [s]")
+    ylabel("Flight Path Angle [deg]")
+    ylim([0 100])
+    xlim([0 T(i) + 100])
+    grid on; grid minor;
+    hold on
+
+    subplot(4, 1, 4)
+    plot(t, q_hist(i), "k.")
+    xlabel("Time [s]")
+    ylabel("q [Pa]")
+    ylim([0 max(q_hist) + 50])
+    xlim([0 T(i) + 100])
+    grid on; grid minor;
     hold on
 end
 % 

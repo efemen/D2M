@@ -1,4 +1,5 @@
 clear; clc; close all;
+addpath("images/")
 
 %% Assumptions
 
@@ -11,10 +12,9 @@ clear; clc; close all;
 
 load parking_orbit.mat
 
-three_weeks = imshow(imread("3weeks.png"));
-
 figure(99)
-
+three_weeks = imshow(imread("3weeks.png"));
+set(gcf, 'Position',  [0, 0, 1920, 1080])
 pause(3)
 close all
 
@@ -25,13 +25,13 @@ sdt = siderealTime(jdt); % Earth map update
 
 uf = UtilityFunctions();
 
-earth = CelestialObject("Earth", 5.9722e24, 6371.0, 149.598e6, 23.44, jdt); % name, mass, planetary radius, heliocentric radius, jdt
-mars = CelestialObject("Mars", 0.64169e24, 3389.5, 227.956e6, 0, jdt); % name, mass, planetary radius, heliocentric radius, jdt
+earth = CelestialObject("Earth", 5.97217e24, 6371.0084, 1.49598e8, 23.43928, jdt); % name, mass, planetary radius, heliocentric radius, jdt
+mars = CelestialObject("Mars", 0.641691e24, 3389.50, 2.27939e8, 0, jdt); % name, mass, planetary radius, heliocentric radius, jdt
 
 
 %% Setup Geometry and Plots
 % Earth Sphere
-[X,Y,Z] = sphere;
+[X,Y,Z] = sphere(100);
 
 X_E = X * earth.r;
 Y_E = Y * earth.r;
@@ -61,29 +61,27 @@ set(earth_map,'CData', earthMap,'FaceColor','texturemap',"EdgeColor","none")
 hold on
 colormap white
 axis equal
-set(gca, 'color', 'none')
-set(gca, 'GridColor', 'none'); 
 rotate(earth_map, [0 0 1], sdt)
-set(gcf, 'Position',  [1200, 0, 800, 800])
-set(gca,'Visible','off');
-
+uf.draw_space();
 
 ecliptic_plane = surf(X_ecliptic, Y_ecliptic, Z_ecliptic);
 ecliptic_plane.FaceAlpha = 0.2;
+ecliptic_plane.EdgeColor = "white";
+ecliptic_plane.EdgeAlpha = 0.2;
 hold on
 
 quiver3(6378,0,0, 4000, 0, 0,"filled","LineWidth", 3,"ShowArrowHead","on", "Color","green","MaxHeadSize",10);
-text(6378 * 2,0,0,"Vernal Eq. ♈")
+text(6378 * 2,0,0,"Vernal Eq. ♈", "Color", "white")
 
 quiver3(0, 0, 0, 1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "blue");
-text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole")
+text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole", "Color", "white")
 
 quiver3(0, 0, 0, 1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "yellow");
-text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉")
+text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉", "Color", "white")
 
-earth_vel_vector = quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
-text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨")
-
+quiver3(0, 0, 0, 1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
+text(1e4*n_earth_velocity(1), 1e4*n_earth_velocity(2), 1e4*n_earth_velocity(3), "Earth Velocity 🜨", "Color", "white")
+set(gcf, 'Position',  [0, 0, 1920, 1080])
 
 clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 
@@ -92,7 +90,7 @@ clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 %% Maneuvering Parameters
 
 departureStatus = 0;
-SC_R = 6378 + 500;
+SC_R = earth.r + 500;
 
 transfer_e = (mars.r_orbit - earth.r_orbit) / (mars.r_orbit + earth.r_orbit);
 perihelion_velocity = sqrt(earth.mu_sun * (1 + transfer_e) / earth.r_orbit);
@@ -120,19 +118,23 @@ V_SC = X_SC;
 A_SC = V_SC;
 
 
-earth_w = 2 * pi / 8.61640905e4;
+earth_w = 7.292115e-5; % rad / s
 
 X_SC(1,:) = X_injection;
 V_SC(1,:) = V_injection;
+telemetry = text(X_SC(1, 1) + 30, X_SC(1, 2) + 30, X_SC(1,3) + 30, "Alt = " + 500 + " km" + newline + ...
+    "V = " + norm(V_SC(1, :))+ " km/s");
+telemetry.Color = "white";
 
 e = zeros(N,1);
 u = e;
 ke = u;
+alt = u;
 
 a = @(X) -earth.mu * X / norm(X)^3;
 
-plot3(departure_coordinates(1), departure_coordinates(2), departure_coordinates(3), "pentagram", 'MarkerSize', 20, "MarkerFaceColor", "cyan");
-text(departure_coordinates(1)*1.1, departure_coordinates(2)*1.1, departure_coordinates(3)*1.1, "Injection Burn Point", "Color", "cyan")
+plot3(departure_coordinates(1), departure_coordinates(2), departure_coordinates(3), "o", 'MarkerSize', 20, "MarkerFaceColor", "white");
+text(departure_coordinates(1)*1.1, departure_coordinates(2)*1.1, departure_coordinates(3)*1.1, "Injection Burn Point", "Color", "white")
 
 for i = 1:N
     A_SC(i,:) = a(X_SC(i,:));
@@ -146,6 +148,7 @@ for i = 1:N
     u(i) = -earth.mu / norm(X_SC(i,:));
     ke(i) = 0.5 * norm(V_SC(i,:))^2;
     e(i) = u(i) + ke(i);
+    alt(i) = norm(X_SC(i, :)) - earth.r;
     [ra_r, dec_r] = uf.ECI2raDec(X_SC(i, :));
 
   
@@ -188,6 +191,9 @@ for i = 1:N
     plot3(X_SC(i,1), X_SC(i, 2), X_SC(i, 3), ".","Color","#FF3131");
     rotate(earth_map, [0 0 1], rad2deg(earth_w*dt), c_Rot)
     view(ra_r + sdt + 30, 40);
+    telemetry.String = "Alt = " + alt(i) + " km" + newline + ...
+    "V = " + norm(V_SC(i, :))+ " km/s";
+    telemetry.Position = X_SC(i ,:) + [30 ,30 ,30];
 
 end
 

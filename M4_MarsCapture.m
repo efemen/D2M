@@ -1,4 +1,5 @@
 clear; clc; close all;
+addpath("images/")
 
 %% Assumptions
 
@@ -35,42 +36,26 @@ Z_ecliptic = -1/n_ecliptic(3) * (n_ecliptic(1)*X_ecliptic + n_ecliptic(2)*Y_ecli
 % Sun Direction
 n_sun =  uf.ICRF2ECI((uf.hat(-mars.heliocentric_pos)'));
 
-% mars Velocity Direction
+% Mars Velocity Direction
 n_mars_velocity = uf.rodrigues_rot(n_sun, n_ecliptic, -90);
 
 % Plots
 
 figure(1);
-set(gcf, 'Position',  [500, 800, 800, 800])
+set(gcf, 'Position',  [0, 0, 1920, 1080])
 mars_map = surf(X_E,Y_E,-Z_E);
 marsMap = imread("mars_Map.jpg");
 set(mars_map,'CData', marsMap,'FaceColor','texturemap',"EdgeColor","none")
 hold on
 colormap white
 axis equal
-set(gca,'Color','none');
-set(gca, 'GridColor', 'none'); 
-set(gca,'Visible','off');
+uf.draw_space();
 
 
 view(240, 30)
-% 
-% ecliptic_plane = surf(X_ecliptic, Y_ecliptic, Z_ecliptic);
-% ecliptic_plane.FaceAlpha = 0.2;
-% hold on
 
 quiver3(mars.r, 0,0, 4000, 0, 0,"filled","LineWidth", 3,"ShowArrowHead","on", "Color","green","MaxHeadSize",10);
 text(mars.r * 2,0,0,"Vernal Eq. ♈")
-% 
-% quiver3(0, 0, 0, 1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "blue");
-% text(1e4*n_ecliptic(1), 1e4*n_ecliptic(2), 1e4*n_ecliptic(3), "Ecliptic North Pole")
-% 
-% quiver3(0, 0, 0, 1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "yellow");
-% text(1e4*n_sun(1), 1e4*n_sun(2), 1e4*n_sun(3), "Sun ☉")
-% 
-% quiver3(0, 0, 0, 1e4*n_mars_velocity(1), 1e4*n_mars_velocity(2), 1e4*n_mars_velocity(3),"filled","LineWidth", 3,"ShowArrowHead", "on", "Color", "red");
-% text(1e4*n_mars_velocity(1), 1e4*n_mars_velocity(2), 1e4*n_mars_velocity(3), "Mars Velocity")
-
 
 clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 
@@ -78,7 +63,7 @@ clear X_E Y_E Z_E X Y Z X_ecliptic Y_ecliptic Z_ecliptic
 
 %% Setup Spacecraft Initial Conditions
 
-dt = 500;          % seconds
+dt = 500;         % seconds
 T = 0:dt:2e6;     % Time matrix
 N = length(T);    % Iteration length
 
@@ -104,7 +89,7 @@ ke = u;
 
 a = @(X) -mars.mu * X / norm(X)^3;
 
-for i = 1:776
+for i = 1:1000
     A_SC(i,:) = a(X_SC(i,:));
     
     T(i + 1) = T(i) + dt;
@@ -126,8 +111,8 @@ for i = 1:776
     end
 
     if abs(norm(X_SC(i,:)) - orbit_now.r_periapsis) < 100 && capture_flag == 0        
-        xlim([-2e4 2e4])
-        ylim([-2e4 2e4])
+        xlim([-5e4 5e4])
+        ylim([-5e4 5e4])
         disp("Periapsis reached.")
         V_ideal = uf.hat(uf.rodrigues_rot(X_SC(i + 1, :), [0, 0, 1], 90)) * sqrt(mars.mu / norm(X_SC(i, :)));
         dV = V_ideal - V_SC(i, :);
@@ -153,14 +138,5 @@ for i = 1:776
     end
 
 end
-
-% T_SOI = T(soi_timestep);
-% V_SOI = V_SC(soi_timestep, :);
-% X_SOI = X_SC(soi_timestep, :);
-% disp("Time elapsed since launch is " + string(T_SOI) + " seconds.")
-% 
-% X_SOI = uf.ECI2ICRF(X_SOI');
-% V_SOI = uf.ECI2ICRF(V_SOI');
-% jdt_SOI =  juliandate(datetime(injection_date) + seconds(T_SOI));
 
 
