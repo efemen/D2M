@@ -101,6 +101,17 @@ classdef UtilityFunctions
             V_next = V_SC;
         end
 
+        function dark = draw_space(obj)
+            set(gcf,'Color','black');
+            set(gca,'Color','black');
+            set(gca, 'GridColor', 'white'); 
+            set(gca, 'GridAlpha', 0.5);
+            set(gca, "XColor", "white");
+            set(gca, "YColor", "white");
+            set(gca, "ZColor", "white");
+            dark = 1;
+        end
+
     end
 end
 

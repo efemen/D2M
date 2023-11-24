@@ -8,7 +8,7 @@ jdt = jdt_SOI;
 
 uf = UtilityFunctions();
 
-earth = CelestialObject("Earth", 5.9722e24, 6371.0, 149.598e6, 23.44, jdt); % name, mass, planetary radius, heliocentric radius, jdt
+earth = CelestialObject("Earth", 5.97217e24, 6371.0084, 1.49598e8, 23.43928, jdt); % name, mass, planetary radius, heliocentric radius, jdt
 mars = CelestialObject("Mars", 0.64169e24, 3389.5, 227.956e6, 0, jdt); % name, mass, planetary radius, heliocentric radius, jdt
 
 % Spacecraft SOI-Exit conditions
@@ -18,31 +18,32 @@ X_SOI(3) = 0;
 X_i =  X_SOI' + earth.heliocentric_pos;
 V_i =  V_SOI' + earth.heliocentric_vel;
 
-dV =  norm((1 - 0.9969) * V_i);
-V_i = 0.9969 * V_i;
+dV =  norm((1 - 0.9982) * V_i);
+V_i = 0.9982 * V_i;
 
 dv_sum = dv_sum + dV;
 
 %% Setup Geometry and Plots
 figure(1)
 
-earth_plot = plot(earth.heliocentric_pos(1), earth.heliocentric_pos(2), "b.", "MarkerSize", 10);
+earth_plot = plot(earth.heliocentric_pos(1), earth.heliocentric_pos(2), ".", "MarkerSize", 40, "Color", "#0000A0");
 hold on
 grid on
 axis equal
-xlim([-3e8 3e8])
-ylim([-3e8 3e8])
+xlim([-2.4e8 2.4e8])
+ylim([-2.4e8 2.4e8])
 
-quiver(earth.heliocentric_pos(1), earth.heliocentric_pos(2), earth.heliocentric_vel(1), earth.heliocentric_vel(2), 1e6, "blue");
+% quiver(earth.heliocentric_pos(1), earth.heliocentric_pos(2), earth.heliocentric_vel(1), earth.heliocentric_vel(2), 1e6, "blue");
 
-mars_plot = plot(mars.heliocentric_pos(1), mars.heliocentric_pos(2), "r.", "MarkerSize", 10);
-quiver(mars.heliocentric_pos(1), mars.heliocentric_pos(2), mars.heliocentric_vel(1), mars.heliocentric_vel(2), 1e6, "red")
-sun = plot(0, 0, "y.", "MarkerSize", 30);
+mars_plot = plot(mars.heliocentric_pos(1), mars.heliocentric_pos(2), ".", "MarkerSize", 40, "Color", "#FA6412");
+% quiver(mars.heliocentric_pos(1), mars.heliocentric_pos(2), mars.heliocentric_vel(1), mars.heliocentric_vel(2), 1e6, "red")
+sun = plot(0, 0, "y.", "MarkerSize", 60);
 
 
-SC_plot = plot(X_i(1), X_i(2), "r.", "MarkerSize", 10);
-SC_quiver = quiver(X_i(1), X_i(2), V_i(1), V_i(2), 1e6, "red");
-set(gcf, 'Position',  [600, 400, 800, 800])
+SC_plot = plot(X_i(1), X_i(2), "g.", "MarkerSize", 10);
+% SC_quiver = quiver(X_i(1), X_i(2), V_i(1), V_i(2), 1e6, "red");
+set(gcf, 'Position',  [0, 0, 1920, 1080])
+uf.draw_space();
 
 %% Analytical Orbital Elements
 
@@ -75,8 +76,8 @@ for i = 1:length(X_transfer)
 end
 
 plot(X_transfer(:, 1), X_transfer(:, 2))
-plot(X_Mars(:, 1), X_Mars(:, 2), "k")
-plot(X_Earth(:, 1), X_Earth(:, 2), "k")
+plot(X_Mars(:, 1), X_Mars(:, 2), "white")
+plot(X_Earth(:, 1), X_Earth(:, 2), "white")
 
 
 N = 600;
@@ -113,8 +114,11 @@ for i = 2:N
 
     sc2mars =  mars.heliocentric_pos(1:2) - X_SC(i, :);
     
-    if norm(sc2mars) < 1.1 * mars.r_soi
-        dt = dt/2;
+    if norm(sc2mars) < 1.25 * mars.r_soi
+        if dt > 3600
+            dt = dt/2;
+        end
+
         disp("SOI vicinity")
     end
 
