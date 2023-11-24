@@ -16,11 +16,12 @@ plot(aoa6(:,1),aoa6(:,2))
 plot(aoa8(:,1),aoa8(:,2))
 plot(aoa10(:,1),aoa10(:,2))
 ylabel('Drag Coefficient [CD]')
-title('Drag for Rockets')
+title('Generic Launch Vehicle Drag Model\newline(from Rocket Propulsion Elements by Sutton)')
 xlabel('Speed [Ma]')
 grid on; grid minor;
+legend('AoA: 0°','AoA: 4°','AoA: 6°','AoA: 8°','AoA: 10°')
 hold off
-
+set(gcf,"Color","white")
 % Tabulate
 
 drag_data.Speed_Ma=linspace(0,6);
